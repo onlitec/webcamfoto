@@ -1,0 +1,177 @@
+/**
+ * Estilos para o módulo Webcamfoto
+ *
+ * @author     Webcamfoto Module
+ * @copyright  2025 Webcamfoto Module
+ * @license    GNU GPLv3
+ */
+
+/* Modal */
+.webcamfoto-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.webcamfoto-modal-content {
+    position: relative;
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 0;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 700px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    border-radius: 5px;
+}
+
+.webcamfoto-modal-header {
+    padding: 10px 16px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #e5e5e5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 5px 5px 0 0;
+}
+
+.webcamfoto-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #444;
+}
+
+.webcamfoto-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.webcamfoto-close:hover,
+.webcamfoto-close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.webcamfoto-modal-body {
+    padding: 16px;
+    position: relative;
+}
+
+.webcamfoto-modal-footer {
+    padding: 10px 16px;
+    background-color: #f8f8f8;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Container da webcam */
+.webcamfoto-video-container {
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+    text-align: center;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    min-height: 300px;
+    display: flex;
+    justify-content: center;
+}
+
+#webcamfoto-video, 
+#webcamfoto-captured img {
+    max-width: 100%;
+    max-height: 480px;
+    display: block;
+    margin: 0 auto;
+}
+
+#webcamfoto-canvas {
+    display: none;
+}
+
+.webcamfoto-error {
+    color: #f44336;
+    text-align: center;
+    padding: 20px;
+    background-color: #ffebee;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* Botões */
+.webcamfoto-modal-footer button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+#webcamfoto-capture {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+}
+
+#webcamfoto-capture:hover {
+    background-color: #45a049;
+}
+
+#webcamfoto-retake {
+    background-color: #ff9800;
+    color: white;
+    border: none;
+}
+
+#webcamfoto-retake:hover {
+    background-color: #e68a00;
+}
+
+#webcamfoto-save {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+}
+
+#webcamfoto-save:hover {
+    background-color: #0b7dda;
+}
+
+#webcamfoto-cancel {
+    background-color: #f44336;
+    color: white;
+    border: none;
+}
+
+#webcamfoto-cancel:hover {
+    background-color: #da190b;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .webcamfoto-modal-content {
+        width: 95%;
+        margin: 5% auto;
+    }
+    
+    .webcamfoto-modal-footer {
+        flex-direction: column;
+    }
+    
+    .webcamfoto-modal-footer button {
+        margin-bottom: 8px;
+        width: 100%;
+    }
+}

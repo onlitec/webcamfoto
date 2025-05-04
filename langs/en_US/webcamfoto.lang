@@ -1,0 +1,50 @@
+# Language file en_US for Webcamfoto module
+# Copyright (C) 2025 Webcamfoto Module
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#
+# Generic
+#
+ModuleWebcamfotoName = Webcamfoto
+ModuleWebcamfotoDesc = Module to capture product photos using webcam
+WebcamfotoSetup = Webcamfoto module setup
+WebcamfotoAdminPage = Webcamfoto administration
+
+#
+# Module configuration page
+#
+Settings = Settings
+WebcamfotoSetupPage = Webcamfoto setup page
+WEBCAMFOTO_QUALITY = Image quality (1-100)
+WEBCAMFOTO_QUALITY_DESC = Sets the quality of the JPEG image (1 = worst quality, 100 = best quality)
+WEBCAMFOTO_WIDTH = Image width
+WEBCAMFOTO_WIDTH_DESC = Width in pixels of the captured image
+WEBCAMFOTO_HEIGHT = Image height
+WEBCAMFOTO_HEIGHT_DESC = Height in pixels of the captured image
+
+#
+# Capture interface
+#
+WebcamfotoCapture = Capture photo
+WebcamfotoCaptureFromWebcam = Capture photo from webcam
+WebcamfotoNoWebcam = No webcam detected
+WebcamfotoAllowCamera = Please allow camera access to use this feature
+WebcamfotoCapturing = Capturing...
+WebcamfotoTakePhoto = Take photo
+WebcamfotoRetake = Retake photo
+WebcamfotoSave = Save photo
+WebcamfotoCancel = Cancel
+WebcamfotoSaved = Photo saved successfully
+WebcamfotoError = Error saving photo
