@@ -106,7 +106,7 @@ class modWebcamfoto extends DolibarrModules
             'css' => array('/custom/webcamfoto/css/webcamfoto.css'),
             // Set this to relative path of js file if module must load a js on all pages
             'js' => array(
-                '/custom/webcamfoto/js/webcam.js',
+                // '/custom/webcamfoto/js/webcam.js', // Removido para evitar conflito com webcam_page.js
                 '/custom/webcamfoto/js/inject_button.js'
             ),
             // Set here all hooks context managed by module. You can also set hook context 'all'
