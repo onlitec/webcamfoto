@@ -1,0 +1,55 @@
+/**
+ * Estilos para o componente de progresso do módulo WebcamFoto
+ */
+
+.webcamfoto-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.webcamfoto-progress-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.webcamfoto-progress-content {
+    position: relative;
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 200px;
+}
+
+.webcamfoto-progress-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: webcamfoto-spin 1s linear infinite;
+}
+
+.webcamfoto-progress-message {
+    font-size: 16px;
+    color: #333;
+}
+
+@keyframes webcamfoto-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

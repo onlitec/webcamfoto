@@ -9,7 +9,7 @@
 
 // Carrega o ambiente do Dolibarr
 if (!defined('NOTOKENRENEWAL')) define('NOTOKENRENEWAL', 1); // Desativa renovação de token
-require_once '../../../../main.inc.php';
+require_once '../../main.inc.php';
 
 // Verifica se há um ID de produto
 $productId = GETPOST('id', 'int');
@@ -22,7 +22,15 @@ if (!$user->rights->produit->lire) {
     accessforbidden();
 }
 
-$title = 'Captura de Fotos - Produto #' . $productId;
+// Carrega o objeto do produto para obter a referência
+require_once DOL_DOCUMENT_ROOT.'/product/class/product.class.php';
+$product = new Product($db);
+$result = $product->fetch($productId);
+if ($result <= 0) {
+    die("Erro: Produto não encontrado");
+}
+
+$title = 'Captura de Fotos - Produto #' . $product->ref;
 ?>
 <!DOCTYPE html>
 <html>
@@ -32,7 +40,10 @@ $title = 'Captura de Fotos - Produto #' . $productId;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Estilos básicos do Dolibarr -->
     <link rel="stylesheet" type="text/css" href="<?php echo DOL_URL_ROOT; ?>/theme/common/fontawesome-5/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="<?php echo DOL_URL_ROOT . '/' . (empty($conf->global->MAIN_THEME) ? 'theme/eldy' : ('theme/' . $conf->global->MAIN_THEME)); ?>/style.css">
+    <!-- CSS do Dolibarr -->
+    <link rel="stylesheet" type="text/css" href="<?php echo DOL_URL_ROOT; ?>/theme/<?php echo empty($conf->global->MAIN_THEME) ? 'eldy' : $conf->global->MAIN_THEME; ?>/style.css.php">
+    <!-- CSS específico do módulo webcamfoto -->
+    <link rel="stylesheet" type="text/css" href="<?php echo DOL_URL_ROOT; ?>/custom/webcamfoto/css/webcamfoto.css">
     
     <style>
         body {
@@ -156,6 +167,13 @@ $title = 'Captura de Fotos - Produto #' . $productId;
         .btn-green:hover {
             background-color: #007B3D;
         }
+        .btn-purple {
+            background-color: #6f42c1;
+            color: white;
+        }
+        .btn-purple:hover {
+            background-color: #563d7c;
+        }
     </style>
 </head>
 <body>
@@ -164,6 +182,11 @@ $title = 'Captura de Fotos - Produto #' . $productId;
         
         <div class="success-message" id="success-message"></div>
         <div class="error-message" id="error-message"></div>
+        
+        <!-- Campo oculto para armazenar o ID do produto -->
+        <input type="hidden" id="product-id-input" value="<?php echo $productId; ?>">
+        <!-- Campo oculto para armazenar a referência do produto -->
+        <input type="hidden" id="product-ref-input" value="<?php echo $product->ref; ?>">
         
         <div class="webcam-container">
             <div class="webcam-column">
@@ -181,6 +204,7 @@ $title = 'Captura de Fotos - Produto #' . $productId;
                     <button class="btn btn-blue" id="capture-1">Capturar</button>
                     <button class="btn btn-yellow" id="retake-1" style="display: none;">Nova Foto</button>
                     <button class="btn btn-green" id="save-1" style="display: none;">Salvar</button>
+                    <button class="btn btn-purple" id="enhance-1" style="display: none;">Otimizar IA</button>
                 </div>
             </div>
             
@@ -199,6 +223,7 @@ $title = 'Captura de Fotos - Produto #' . $productId;
                     <button class="btn btn-blue" id="capture-2">Capturar</button>
                     <button class="btn btn-yellow" id="retake-2" style="display: none;">Nova Foto</button>
                     <button class="btn btn-green" id="save-2" style="display: none;">Salvar</button>
+                    <button class="btn btn-purple" id="enhance-2" style="display: none;">Otimizar IA</button>
                 </div>
             </div>
         </div>
@@ -210,5 +235,7 @@ $title = 'Captura de Fotos - Produto #' . $productId;
         </div>
     </div>
 </body>
-<script src="js/webcam_page.js"></script>
+<script src="<?php echo DOL_URL_ROOT; ?>/custom/webcamfoto/js/progress.js"></script>
+<script src="<?php echo DOL_URL_ROOT; ?>/custom/webcamfoto/js/ai_enhance.js"></script>
+<script src="<?php echo DOL_URL_ROOT; ?>/custom/webcamfoto/js/webcam_page.js"></script>
 </html>

@@ -22,6 +22,9 @@ if (!$user->admin) {
 
 // Parâmetros
 $action = GETPOST('action', 'alpha');
+// Novos parâmetros IA
+$ai_provider = GETPOST('WEBCAMFOTO_AI_PROVIDER', 'alpha');
+$ai_api_key  = GETPOST('WEBCAMFOTO_AI_API_KEY', 'restricthtml');
 
 // Define object
 $myModWebcamfoto = new modWebcamfoto($db);
@@ -38,6 +41,10 @@ if ($action == 'update') {
     $webcamfoto_width = GETPOST('WEBCAMFOTO_WIDTH', 'int');
     $webcamfoto_height = GETPOST('WEBCAMFOTO_HEIGHT', 'int');
     $webcamfoto_set_as_main = GETPOST('WEBCAMFOTO_SET_AS_MAIN', 'int');
+    $ai_provider = GETPOST('WEBCAMFOTO_AI_PROVIDER', 'alpha');
+    $ai_api_key  = GETPOST('WEBCAMFOTO_AI_API_KEY', 'restricthtml');
+    $pixelcut_api_key = GETPOST('WEBCAMFOTO_PIXELCUT_API_KEY', 'restricthtml');
+    $ai_scale = GETPOST('WEBCAMFOTO_AI_SCALE', 'int');
     
     // Validações
     $error = 0;
@@ -65,6 +72,10 @@ if ($action == 'update') {
         dolibarr_set_const($db, 'WEBCAMFOTO_WIDTH', $webcamfoto_width, 'chaine', 0, '', $conf->entity);
         dolibarr_set_const($db, 'WEBCAMFOTO_HEIGHT', $webcamfoto_height, 'chaine', 0, '', $conf->entity);
         dolibarr_set_const($db, 'WEBCAMFOTO_SET_AS_MAIN', $webcamfoto_set_as_main, 'chaine', 0, '', $conf->entity);
+        dolibarr_set_const($db, 'WEBCAMFOTO_AI_PROVIDER', $ai_provider, 'chaine', 0, '', $conf->entity);
+        dolibarr_set_const($db, 'WEBCAMFOTO_AI_API_KEY', $ai_api_key, 'chaine', 0, '', $conf->entity);
+        dolibarr_set_const($db, 'WEBCAMFOTO_PIXELCUT_API_KEY', $pixelcut_api_key, 'chaine', 0, '', $conf->entity);
+        dolibarr_set_const($db, 'WEBCAMFOTO_AI_SCALE', $ai_scale, 'chaine', 0, '', $conf->entity);
         
         setEventMessages($langs->trans('SetupSaved'), null);
         header('Location: '.$_SERVER['PHP_SELF']);
@@ -125,6 +136,37 @@ print '<td>';
 print $form->selectyesno('WEBCAMFOTO_SET_AS_MAIN', (!empty($conf->global->WEBCAMFOTO_SET_AS_MAIN) ? $conf->global->WEBCAMFOTO_SET_AS_MAIN : '0'), 1);
 print '</td>';
 print '<td>'.$langs->trans('WEBCAMFOTO_SET_AS_MAIN_DESC').'</td>';
+print '</tr>';
+
+// Provedor de IA
+print '<tr class="oddeven">';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_PROVIDER').'</td>';
+print '<td><input type="text" class="flat" name="WEBCAMFOTO_AI_PROVIDER" value="'.(!empty($conf->global->WEBCAMFOTO_AI_PROVIDER) ? $conf->global->WEBCAMFOTO_AI_PROVIDER : 'pixelcut').'"></td>';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_PROVIDER_DESC').'</td>';
+print '</tr>';
+
+// Chave API IA
+print '<tr class="oddeven">';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_API_KEY').'</td>';
+print '<td><input type="text" class="flat" name="WEBCAMFOTO_AI_API_KEY" value="'.(!empty($conf->global->WEBCAMFOTO_AI_API_KEY) ? dol_htmlentities($conf->global->WEBCAMFOTO_AI_API_KEY) : '').'" size="60"></td>';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_API_KEY_DESC').'</td>';
+print '</tr>';
+
+// Chave API Pixelcut
+print '<tr class="oddeven">';
+print '<td>'.$langs->trans('WEBCAMFOTO_PIXELCUT_API_KEY').'</td>';
+print '<td><input type="text" class="flat" name="WEBCAMFOTO_PIXELCUT_API_KEY" value="'.(!empty($conf->global->WEBCAMFOTO_PIXELCUT_API_KEY) ? dol_htmlentities($conf->global->WEBCAMFOTO_PIXELCUT_API_KEY) : '').'" size="60"></td>';
+print '<td>'.$langs->trans('WEBCAMFOTO_PIXELCUT_API_KEY_DESC').'</td>';
+print '</tr>';
+
+// Escala de Upscale
+print '<tr class="oddeven">';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_SCALE').'</td>';
+print '<td><select class="flat" name="WEBCAMFOTO_AI_SCALE">';
+print '<option value="2" '.((!empty($conf->global->WEBCAMFOTO_AI_SCALE) && $conf->global->WEBCAMFOTO_AI_SCALE == 2) ? 'selected' : '').'>2x (Dobrar resolução)</option>';
+print '<option value="4" '.((!empty($conf->global->WEBCAMFOTO_AI_SCALE) && $conf->global->WEBCAMFOTO_AI_SCALE == 4) ? 'selected' : '').'>4x (Quadruplicar resolução)</option>';
+print '</select></td>';
+print '<td>'.$langs->trans('WEBCAMFOTO_AI_SCALE_DESC').'</td>';
 print '</tr>';
 
 print '</table>';

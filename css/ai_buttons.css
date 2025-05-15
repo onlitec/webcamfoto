@@ -1,0 +1,70 @@
+/**
+ * Estilos para os botões de IA no módulo WebcamFoto
+ */
+
+/* Estilo básico para botões de IA */
+.webcamfoto-button-purple {
+    background-color: #8a2be2 !important;
+    color: white !important;
+    border: 1px solid #6a1cb2 !important;
+    padding: 8px 16px !important;
+    margin: 5px !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    font-weight: bold !important;
+    display: inline-block !important;
+    text-align: center !important;
+    transition: background-color 0.3s ease !important;
+}
+
+/* Hover para botões de IA */
+.webcamfoto-button-purple:hover {
+    background-color: #9b4dff !important;
+    box-shadow: 0 0 8px rgba(138, 43, 226, 0.6) !important;
+}
+
+/* Botão específico de otimização */
+#webcamfoto-enhance {
+    background-color: #8a2be2 !important;
+    color: white !important;
+    border: 1px solid #6a1cb2 !important;
+    padding: 8px 16px !important;
+    margin: 5px !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    font-weight: bold !important;
+    display: inline-block !important;
+    text-align: center !important;
+    transition: background-color 0.3s ease !important;
+    /* Garantir que o botão seja visível */
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 9999 !important;
+}
+
+/* Hover para o botão específico */
+#webcamfoto-enhance:hover {
+    background-color: #9b4dff !important;
+    box-shadow: 0 0 8px rgba(138, 43, 226, 0.6) !important;
+}
+
+/* Estilos para o footer do modal */
+.webcamfoto-modal-footer {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    padding: 15px !important;
+    gap: 10px !important;
+}
+
+/* Animação para chamar atenção para o botão */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Aplicar animação ao botão */
+#webcamfoto-enhance {
+    animation: pulse 2s infinite;
+}

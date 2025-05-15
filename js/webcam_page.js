@@ -8,7 +8,18 @@
 
 class WebcamPageController {
     constructor() {
-        this.productId = this.getProductIdFromUrl();
+        this.productRef = this.getProductRefFromUrl();
+        if (this.productRef) {
+            // Aguardar o DOM estar pronto para preencher o campo
+            document.addEventListener('DOMContentLoaded', () => {
+                const productRefInput = document.getElementById('product-ref-input');
+                if (productRefInput) {
+                    productRefInput.value = this.productRef;
+                    productRefInput.readOnly = true; // Opcional: torna o campo somente leitura
+                }
+            });
+        }
+        this.productIdFromUrl = this.getProductIdFromUrl(); // Mantém para possível uso futuro ou log
         this.videoElements = [
             document.getElementById('webcam-video-1'),
             document.getElementById('webcam-video-2')
@@ -58,18 +69,42 @@ class WebcamPageController {
      * Inicializa o controlador
      */
     init() {
+        // Tenta pré-preencher o campo com o ID da URL, se existir
+        const refInput = document.getElementById('product-ref-input');
+        if (refInput && this.productIdFromUrl) {
+            // Poderia buscar a ref completa aqui via AJAX, mas por ora só coloca o ID numérico
+            // refInput.value = this.productIdFromUrl; 
+            // Vamos deixar em branco por enquanto para forçar a digitação da ref completa
+            console.log('ID numérico da URL (não usado diretamente para salvar):', this.productIdFromUrl);
+        }
+
         this.attachEvents();
         this.enumerateDevices();
     }
     
     /**
-     * Obtém o ID do produto da URL
+     * Obtém o ID do produto da URL (agora usado apenas para informação)
      */
-    getProductIdFromUrl() {
+    getProductRefFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get('id');
+        const productRef = urlParams.get('ref');
+        return productRef;
     }
     
+    getProductIdFromUrl() { 
+        // Primeiro tenta obter do campo oculto (mais confiavel)
+        const idInput = document.getElementById('product-id-input');
+        if (idInput && idInput.value) {
+            console.log('ID do produto obtido do campo oculto:', idInput.value);
+            return idInput.value;
+        }
+        // Fallback: tenta obter da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlId = urlParams.get('id');
+        console.log('ID do produto obtido da URL:', urlId);
+        return urlId;
+    }
+
     /**
      * Liga os eventos aos elementos da página
      */
@@ -324,21 +359,28 @@ class WebcamPageController {
      * @param {number} cameraIndex - Índice da câmera (0 ou 1)
      */
     save(cameraIndex) {
-        if (!this.capturedImages[cameraIndex] || !this.productId) {
-            this.showError('Nenhuma imagem capturada ou ID do produto não definido');
+        const saveBtn = this.saveButtons[cameraIndex];
+        const imageData = this.capturedImages[cameraIndex];
+        
+        // Obtém a referência do produto do campo de input
+        const productRef = document.getElementById('product-ref-input')?.value?.trim();
+        const productId = this.productIdFromUrl;
+
+        if (!imageData || (!productRef && !productId)) {
+            this.showError('Capture uma imagem e informe a Referência ou ID do Produto antes de salvar');
             return;
         }
         
         // Desabilita o botão durante o salvamento
-        const saveBtn = this.saveButtons[cameraIndex];
         saveBtn.disabled = true;
         saveBtn.textContent = 'Salvando...';
         
         // Envia a imagem para o servidor usando FormData
         const formData = new FormData();
-        formData.append('product_id', this.productId);
-        formData.append('image_data', this.capturedImages[cameraIndex]);
-        formData.append('suffix', `_cam${cameraIndex + 1}`);
+        formData.append('product_ref', productRef || ''); // Alterado para aceitar vazio
+        formData.append('product_id', productId || ''); // novo campo
+        formData.append('image_data', imageData);
+        formData.append('image_suffix', '_' + (cameraIndex + 1)); // Alterado para image_suffix
         
         // Determina o URL do script de salvamento
         const saveUrl = this.getSavePhotoUrl();
@@ -402,8 +444,12 @@ class WebcamPageController {
      * Salva ambas as imagens capturadas
      */
     saveBoth() {
-        if ((!this.capturedImages[0] && !this.capturedImages[1]) || !this.productId) {
-            this.showError('Nenhuma imagem capturada ou ID do produto não definido');
+        // Obtém a referência do produto do campo de input
+        const productRef = document.getElementById('product-ref-input')?.value?.trim();
+        const productId = this.productIdFromUrl;
+
+        if ((!this.capturedImages[0] && !this.capturedImages[1]) || (!productRef && !productId)) {
+            this.showError('Capture ao menos uma imagem e informe a Referência ou ID do Produto antes de salvar');
             return;
         }
         
@@ -419,9 +465,10 @@ class WebcamPageController {
             if (!imageData) return Promise.resolve();
             
             const formData = new FormData();
-            formData.append('product_id', this.productId);
+            formData.append('product_ref', productRef || ''); // pode estar vazio
+            formData.append('product_id', productId || '');
             formData.append('image_data', imageData);
-            formData.append('suffix', suffix);
+            formData.append('image_suffix', suffix);
             
             // Determina o URL do script de salvamento
             const saveUrl = this.getSavePhotoUrl();
@@ -432,6 +479,7 @@ class WebcamPageController {
                 body: formData
             })
             .then(response => {
+                // Verifica se a resposta é válida
                 if (!response.ok) {
                     throw new Error('Erro na resposta do servidor: ' + response.status);
                 }

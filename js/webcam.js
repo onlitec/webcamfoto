@@ -10,6 +10,188 @@
 (function() {
     "use strict";
 
+    // Define módulo de otimização por IA se ainda não estiver presente
+    if (!window.ImageEnhancer) {
+        window.ImageEnhancer = {
+            _endpoint: 'custom/webcamfoto/ajax/enhance_photo.php',
+            _configEndpoint: 'custom/webcamfoto/ajax/get_ai_config.php',
+            _apiKey: '', // Será carregado do servidor
+            _model: '', // Será carregado do servidor
+            _config: null, // Configurações completas
+            _metrics: {
+                startTime: 0,
+                endTime: 0,
+                duration: 0,
+                success: false
+            },
+            
+            /**
+             * Inicializa o módulo de otimização
+             * @returns {Promise} - Promise resolvida quando as configurações forem carregadas
+             */
+            async init() {
+                console.log('ImageEnhancer: Inicializando e carregando configurações');
+                try {
+                    await this.loadConfig();
+                    console.log('ImageEnhancer: Configurações carregadas com sucesso');
+                    return true;
+                } catch (error) {
+                    console.error('ImageEnhancer: Erro ao carregar configurações', error);
+                    return false;
+                }
+            },
+            
+            /**
+             * Carrega as configurações do servidor
+             * @returns {Promise} - Promise resolvida quando as configurações forem carregadas
+             */
+            async loadConfig() {
+                // Determina dinamicamente o endpoint absoluto
+                let endpoint = this._configEndpoint;
+                if (window.WebcamFoto && typeof window.WebcamFoto.getDolibarrBasePath === 'function') {
+                    const base = window.WebcamFoto.getDolibarrBasePath();
+                    endpoint = base.replace(/\/$/, '') + '/' + this._configEndpoint.replace(/^\//, '');
+                }
+                
+                try {
+                    const response = await fetch(endpoint);
+                    if (!response.ok) {
+                        throw new Error(`Erro HTTP: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        this._config = data.config;
+                        this._apiKey = data.config.settings.api_key || '';
+                        this._model = data.config.model_name || 'default';
+                        console.log('ImageEnhancer: Configurações carregadas', this._model);
+                        return true;
+                    } else {
+                        console.warn('ImageEnhancer: Configurações não disponíveis', data.error);
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('ImageEnhancer: Erro ao carregar configurações', error);
+                    return false;
+                }
+            },
+            
+            hasSettings() {
+                return this._config !== null && this._apiKey !== '';
+            },
+            
+            /**
+             * Envia a imagem para otimização no backend PHP
+             * @param {string} imageDataUrl - imagem em dataURL (base64)
+             * @returns {Promise<string>} - dataURL da imagem otimizada
+             */
+            enhanceImage(imageDataUrl) {
+                // Iniciar métricas
+                this._metrics.startTime = performance.now();
+                this._metrics.success = false;
+                
+                // Exibe barra de progresso se o módulo estiver disponível
+                if (window.ProgressBar) {
+                    window.ProgressBar.show('webcamfoto-modal', 'Otimizando imagem...');
+                }
+                
+                // Determina dinamicamente o endpoint absoluto, respeitando a instalação do Dolibarr
+                let endpoint = this._endpoint;
+                if (window.WebcamFoto && typeof window.WebcamFoto.getDolibarrBasePath === 'function') {
+                    const base = window.WebcamFoto.getDolibarrBasePath();
+                    // Garante que não haja duplicação de barras
+                    endpoint = base.replace(/\/$/, '') + '/' + this._endpoint.replace(/^\//, '');
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'enhance');
+                formData.append('image_data', imageDataUrl);
+                
+                // Adicionar configurações atuais
+                if (this._apiKey) {
+                    formData.append('api_key', this._apiKey);
+                }
+                
+                if (this._model) {
+                    formData.append('model', this._model);
+                }
+                
+                // Adicionar configurações adicionais se disponíveis
+                if (this._config && this._config.settings) {
+                    const settings = this._config.settings;
+                    if (settings.scale) formData.append('scale', settings.scale);
+                    if (settings.quality) formData.append('quality', settings.quality);
+                    if (settings.prompt) formData.append('prompt', settings.prompt);
+                }
+                
+                return fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro na resposta do servidor: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Finalizar métricas
+                    this._metrics.endTime = performance.now();
+                    this._metrics.duration = this._metrics.endTime - this._metrics.startTime;
+                    
+                    if (data.success) {
+                        this._metrics.success = true;
+                        console.log(`ImageEnhancer: Otimização concluída em ${this._metrics.duration.toFixed(2)}ms`);
+                        
+                        // Registrar métricas de performance do servidor se disponíveis
+                        if (data.performance) {
+                            console.log('ImageEnhancer: Métricas do servidor', data.performance);
+                        }
+                        
+                        // Esconder barra de progresso
+                        if (window.ProgressBar) {
+                            window.ProgressBar.hide('webcamfoto-modal');
+                        }
+                        
+                        return data.enhancedImageData;
+                    } else {
+                        console.error('ImageEnhancer: Erro na otimização', data.error);
+                        // Esconder barra de progresso
+                        if (window.ProgressBar) {
+                            window.ProgressBar.hide('webcamfoto-modal');
+                        }
+                        throw new Error(data.error || 'Erro desconhecido na otimização');
+                    }
+                })
+                .catch(error => {
+                    // Finalizar métricas em caso de erro
+                    this._metrics.endTime = performance.now();
+                    this._metrics.duration = this._metrics.endTime - this._metrics.startTime;
+                    console.error(`ImageEnhancer: Erro após ${this._metrics.duration.toFixed(2)}ms`, error);
+                    
+                    // Esconder barra de progresso
+                    if (window.ProgressBar) {
+                        window.ProgressBar.hide('webcamfoto-modal');
+                    }
+                    
+                    throw error;
+                });
+            },
+            
+            /**
+             * Retorna as métricas de performance da última otimização
+             * @returns {Object} - Objeto com métricas de performance
+             */
+            getMetrics() {
+                return {
+                    duration: this._metrics.duration.toFixed(2),
+                    success: this._metrics.success,
+                    model: this._model
+                };
+            }
+        };
+    }
+
     /**
      * Classe para manipulação da webcam e captura de fotos
      */
@@ -20,6 +202,7 @@
         constructor() {
             this.initialized = false;
             this.productId = null;
+            this.productRef = null; // Referência do produto (código)
             this.modalElement = null;
             this.video = null;
             this.video2 = null; // Segunda webcam
@@ -39,24 +222,55 @@
             this.modulePath = null;
             this.needsReload = false;
             this.dualCameraMode = false; // Indica se estamos usando duas câmeras
+            this.enhancementActive = false; // Indica se a otimização por IA está ativa
+            this.enhancedImage = null; // Imagem otimizada pela IA
+            this.enhancedImage2 = null; // Segunda imagem otimizada pela IA
+            this.imageEnhancer = null; // Referência para o objeto ImageEnhancer
+            this.progressInterval = null;
         }
 
         /**
          * Inicializa o objeto
-         * @param {number} productId - ID do produto
+         * @param {object} productInfo - Informações do produto
          */
-        init(productId) {
-            if (this.initialized && this.productId) return;
+        init(productInfo) {
+            console.log('WebcamFoto.init()');
             
-            this.productId = productId || this.getProductIdFromUrl();
-            this.createModal();
-            this.attachEvents();
+            if (this.initialized) {
+                console.log('WebcamFoto já inicializado');
+                return;
+            }
+            
+            // Inicializa o módulo de otimização por IA
+            if (window.ImageEnhancer && typeof window.ImageEnhancer.init === 'function') {
+                window.ImageEnhancer.init().then(success => {
+                    console.log('ImageEnhancer inicializado:', success);
+                    this.enhancementActive = success && window.ImageEnhancer.hasSettings();
+                }).catch(error => {
+                    console.error('Erro ao inicializar ImageEnhancer:', error);
+                    this.enhancementActive = false;
+                });
+            } else {
+                console.log('ImageEnhancer não disponível');
+                this.enhancementActive = false;
+            }
+            
+            // Armazena as informações do produto
+            if (productInfo) {
+                this.productId = productInfo.productId || null;
+                this.productRef = productInfo.productRef || null;
+                this.productName = productInfo.productName || null;
+            }
+            
             this.initialized = true;
             
-            // Determina o caminho base do módulo com base na localização do script atual
+            // Determina o caminho base do módulo
             this.modulePath = this.getModulePath();
             
-            console.log("WebcamFoto inicializado para o produto ID: " + this.productId);
+            console.log('WebcamFoto inicializado com sucesso');
+            console.log('Produto ID:', this.productId);
+            console.log('Produto Ref:', this.productRef);
+            console.log('Caminho do módulo:', this.modulePath);
         }
         
         /**
@@ -93,7 +307,7 @@
          */
         createModal() {
             // Verifica se o modal já existe
-            if (document.getElementById('webcamfoto-modal')) {
+            if (document.getElementById('webcamfoto-modal-content')) {
                 this.modalElement = document.getElementById('webcamfoto-modal');
                 return;
             }
@@ -141,7 +355,17 @@
                         border: 1px solid #00AB55 !important;
                     }
                     .webcamfoto-button-green:hover {
-                        background-color: #007B3D !important;
+                        background-color: #00894A !important;
+                        background-image: none !important;
+                    }
+                    .webcamfoto-button-purple {
+                        background-color: #8a2be2 !important;
+                        background-image: none !important;
+                        color: white !important;
+                        border: 1px solid #8a2be2 !important;
+                    }
+                    .webcamfoto-button-purple:hover {
+                        background-color: #7a1dd2 !important;
                         background-image: none !important;
                     }
                     .webcamfoto-button-purple {
@@ -241,6 +465,30 @@
                         padding: 10px;
                         overflow: hidden;
                         height: calc(100% - 110px);
+                    }
+                    
+                    /* Estilos para o painel de informações do produto */
+                    .webcamfoto-product-info {
+                        background-color: #f0f7ff;
+                        border: 1px solid #d0e0ff;
+                        border-radius: 4px;
+                        padding: 10px;
+                        margin-bottom: 10px;
+                        font-size: 14px;
+                        color: #333;
+                    }
+                    
+                    #webcamfoto-product-id, 
+                    #webcamfoto-product-ref {
+                        font-weight: bold;
+                        color: #2C7BE5;
+                    }
+                    
+                    #webcamfoto-product-name {
+                        font-size: 16px;
+                        font-weight: bold;
+                        margin-top: 5px;
+                        color: #555;
                     }
                     
                     .webcamfoto-modal-footer {
@@ -368,264 +616,18 @@
                     }
                     
                     /* Esconder o resize handle quando maximizado */
-                    .webcamfoto-modal-maximized .webcamfoto-modal-content {
-                        resize: none;
-                    }
-                `;
-                document.head.appendChild(modalStyles);
-            }
-
-            // Cria o elemento modal
-            this.modalElement = document.createElement('div');
-            this.modalElement.id = 'webcamfoto-modal';
-            this.modalElement.className = 'webcamfoto-modal';
-            
-            // Conteúdo do modal
-            this.modalElement.innerHTML = `
-                <div class="webcamfoto-modal-content" id="webcamfoto-modal-content">
-                    <div class="webcamfoto-modal-header" id="webcamfoto-modal-header">
-                        <h2 class="webcamfoto-modal-title">Capturar Fotos - Modo Dupla Câmera</h2>
-                        <div class="webcamfoto-modal-controls">
-                            <button class="webcamfoto-control-btn webcamfoto-minimize" id="webcamfoto-minimize" title="Minimizar">&#8211;</button>
-                            <button class="webcamfoto-control-btn webcamfoto-maximize" id="webcamfoto-maximize" title="Maximizar">&#9744;</button>
-                            <button class="webcamfoto-control-btn webcamfoto-close" id="webcamfoto-close" title="Fechar">&times;</button>
-                        </div>
-                    </div>
-                    <div class="webcamfoto-modal-body">
-                        <div class="webcamfoto-success-message" id="webcamfoto-success-message"></div>
-                        <div class="webcamfoto-error" id="webcamfoto-error"></div>
-                        
-                        <div class="webcam-container">
-                            <div class="webcam-column" id="webcam-column-1">
-                                <div class="webcam-title">Câmera 1</div>
-                                <select class="camera-select" id="camera-select-1">
-                                    <option value="">Selecione a câmera...</option>
-                                </select>
-                                
-                                <div id="webcamfoto-video-container-1" class="webcamfoto-video-container">
-                                    <video id="webcamfoto-video" class="webcamfoto-video" autoplay></video>
-                                </div>
-                                <div id="webcamfoto-canvas-container-1" class="webcamfoto-canvas-container" style="display:none;">
-                                    <canvas id="webcamfoto-canvas" class="webcamfoto-canvas"></canvas>
-                                </div>
-                                
-                                <div class="webcam-controls">
-                                    <button id="webcamfoto-capture-1" class="button butAction webcamfoto-button-blue">Capturar</button>
-                                    <button id="webcamfoto-retake-1" class="button butAction webcamfoto-button-yellow" style="display:none;">Nova Foto</button>
-                                    <button id="webcamfoto-save-1" class="button butAction webcamfoto-button-green" style="display:none;">Salvar</button>
-                                </div>
-                            </div>
-                            
-                            <div class="webcam-column" id="webcam-column-2">
-                                <div class="webcam-title">Câmera 2</div>
-                                <select class="camera-select" id="camera-select-2">
-                                    <option value="">Selecione a câmera...</option>
-                                </select>
-                                
-                                <div id="webcamfoto-video-container-2" class="webcamfoto-video-container">
-                                    <video id="webcamfoto-video-2" class="webcamfoto-video" autoplay></video>
-                                </div>
-                                <div id="webcamfoto-canvas-container-2" class="webcamfoto-canvas-container" style="display:none;">
-                                    <canvas id="webcamfoto-canvas-2" class="webcamfoto-canvas"></canvas>
-                                </div>
-                                
-                                <div class="webcam-controls">
-                                    <button id="webcamfoto-capture-2" class="button butAction webcamfoto-button-blue">Capturar</button>
-                                    <button id="webcamfoto-retake-2" class="button butAction webcamfoto-button-yellow" style="display:none;">Nova Foto</button>
-                                    <button id="webcamfoto-save-2" class="button butAction webcamfoto-button-green" style="display:none;">Salvar</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="webcamfoto-modal-footer">
-                        <button id="webcamfoto-capture-both" class="button butAction webcamfoto-button-purple webcamfoto-capture-both">Capturar Ambas as Câmeras</button>
-                        <button id="webcamfoto-cancel" class="button butActionDelete webcamfoto-button-red">Cancelar</button>
-                        <button id="webcamfoto-save-both" class="button butAction webcamfoto-button-green" style="display:none;">Salvar Ambas as Fotos</button>
-                    </div>
                 </div>
-            `;
-            
-            // Adiciona o modal ao body
-            document.body.appendChild(this.modalElement);
-            
-            // Atualiza as referências aos elementos
-            this.video = document.getElementById('webcamfoto-video');
-            this.video2 = document.getElementById('webcamfoto-video-2');
-            this.canvas = document.getElementById('webcamfoto-canvas');
-            this.canvas2 = document.getElementById('webcamfoto-canvas-2');
-            
-            // Referências aos containers
-            this.videoContainers[0] = document.getElementById('webcamfoto-video-container-1');
-            this.videoContainers[1] = document.getElementById('webcamfoto-video-container-2');
-            this.canvasContainers[0] = document.getElementById('webcamfoto-canvas-container-1');
-            this.canvasContainers[1] = document.getElementById('webcamfoto-canvas-container-2');
-            
-            // Referências aos seletores de câmera
-            this.cameraSelects = [
-                document.getElementById('camera-select-1'),
-                document.getElementById('camera-select-2')
-            ];
-            
-            // Salva o estado do modal
-            this.modalState = {
-                isMinimized: false,
-                isMaximized: false,
-                originalWidth: null,
-                originalHeight: null,
-                originalTop: null,
-                originalLeft: null
-            };
-        }
-
-        /**
-         * Anexa os eventos aos elementos do modal
-         */
-        attachEvents() {
-            // Fechar o modal
-            const closeBtn = document.getElementById('webcamfoto-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => this.closeModal());
-            }
-            
-            // Minimizar o modal
-            const minimizeBtn = document.getElementById('webcamfoto-minimize');
-            if (minimizeBtn) {
-                minimizeBtn.addEventListener('click', () => this.minimizeModal());
-            }
-            
-            // Maximizar o modal
-            const maximizeBtn = document.getElementById('webcamfoto-maximize');
-            if (maximizeBtn) {
-                maximizeBtn.addEventListener('click', () => this.toggleMaximizeModal());
-            }
-            
-            // Tornar o modal arrastável
-            this.makeModalDraggable();
-            
-            // Fechamento do modal ao clicar fora dele
-            window.addEventListener('click', (event) => {
-                if (event.target == this.modalElement) {
-                    this.closeModal();
-                }
-            });
-            
-            // Botão de captura
-            const captureBtn1 = document.getElementById('webcamfoto-capture-1');
-            const captureBtn2 = document.getElementById('webcamfoto-capture-2');
-            if (captureBtn1) {
-                captureBtn1.addEventListener('click', () => this.capture(1));
-            }
-            if (captureBtn2) {
-                captureBtn2.addEventListener('click', () => this.capture(2));
-            }
-            
-            // Botão para cancelar
-            const cancelBtn = document.getElementById('webcamfoto-cancel');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => this.closeModal());
-            }
-            
-            // Botão para tirar nova foto
-            const retakeBtn1 = document.getElementById('webcamfoto-retake-1');
-            const retakeBtn2 = document.getElementById('webcamfoto-retake-2');
-            if (retakeBtn1) {
-                retakeBtn1.addEventListener('click', () => this.retake(1));
-            }
-            if (retakeBtn2) {
-                retakeBtn2.addEventListener('click', () => this.retake(2));
-            }
-            
-            // Botão para salvar a foto
-            const saveBtn1 = document.getElementById('webcamfoto-save-1');
-            const saveBtn2 = document.getElementById('webcamfoto-save-2');
-            if (saveBtn1) {
-                saveBtn1.addEventListener('click', () => this.save(1));
-            }
-            if (saveBtn2) {
-                saveBtn2.addEventListener('click', () => this.save(2));
-            }
-            
-            // Botão para capturar ambas as câmeras
-            const captureBothBtn = document.getElementById('webcamfoto-capture-both');
-            if (captureBothBtn) {
-                captureBothBtn.addEventListener('click', () => this.captureBoth());
-            }
-            
-            // Botão para salvar ambas as fotos
-            const saveBothBtn = document.getElementById('webcamfoto-save-both');
-            if (saveBothBtn) {
-                saveBothBtn.addEventListener('click', () => this.saveBoth());
-            }
-        }
-        
-        /**
-         * Torna o modal arrastável
-         */
-        makeModalDraggable() {
-            const modalHeader = document.getElementById('webcamfoto-modal-header');
-            const modalContent = document.getElementById('webcamfoto-modal-content');
-            
-            if (!modalHeader || !modalContent) return;
-            
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            
-            modalHeader.onmousedown = dragMouseDown;
-            
-            function dragMouseDown(e) {
-                e = e || window.event;
-                e.preventDefault();
+            </div>
+            <div class="webcamfoto-modal-body">
+                <div class="webcamfoto-success-message" id="webcamfoto-success-message"></div>
+                <div class="webcamfoto-error" id="webcamfoto-error"></div>
                 
-                // Não permitir arrastar se estiver maximizado
-                if (modalContent.parentElement.classList.contains('webcamfoto-modal-maximized')) {
-                    return;
-                }
-                
-                // Obter a posição do mouse no início
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                // Chamar a função sempre que o mouse se mover
-                document.onmousemove = elementDrag;
-            }
-            
-            function elementDrag(e) {
-                e = e || window.event;
-                e.preventDefault();
-                
-                // Calcular a nova posição do cursor
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                
-                // Definir a nova posição do elemento
-                const newTop = (modalContent.offsetTop - pos2);
-                const newLeft = (modalContent.offsetLeft - pos1);
-                
-                // Aplicar as novas posições
-                modalContent.style.top = newTop + "px";
-                modalContent.style.left = newLeft + "px";
-                // Não remover a transformação para evitar que a janela desapareça
-                // modalContent.style.transform = 'none';
-            }
-            
-            function closeDragElement() {
-                // Parar de mover quando o mouse for solto
-                document.onmouseup = null;
-                document.onmousemove = null;
-            }
-        }
-        
-        /**
-         * Minimiza o modal
-         */
-        minimizeModal() {
-            if (!this.modalElement) return;
-            
-            const modalContent = document.getElementById('webcamfoto-modal-content');
-            
-            if (this.modalState.isMinimized) {
-                // Restaurar do estado minimizado
+                <div class="webcam-container">
+                    <div class="webcam-column" id="webcam-column-1">
+                        <div class="webcam-title">Camera 1</div>
+                        <select class="camera-select" id="camera-select-1">
+                            <option value="">Selecione a camera...</option>
+                        </select>
                 this.modalElement.classList.remove('webcamfoto-modal-minimized');
                 
                 // Se estava maximizado antes de minimizar, restaurar para maximizado
@@ -734,6 +736,27 @@
                 this.attachEvents();
             }
             
+            // Adiciona instruções de debug para verificar os valores
+            console.log("Valores do produto:", {
+                id: this.productId,
+                ref: this.productRef,
+                name: this.productName
+            });
+            
+            // Atualiza o título do modal com a referência do produto
+            const modalTitle = document.querySelector('#webcamfoto-modal .webcamfoto-modal-header h2');
+            if (modalTitle) {
+                // Verifica se this.productRef existe e não é um número (para evitar usar o ID)
+                if (this.productRef && isNaN(this.productRef)) {
+                    modalTitle.textContent = 'Captura de Fotos - Produto #' + this.productRef;
+                    console.log("Atualizando título do modal com referência:", this.productRef);
+                } else if (this.productRef) {
+                    // Se for um número, ainda usa, mas registra um aviso
+                    modalTitle.textContent = 'Captura de Fotos - Produto #' + this.productRef;
+                    console.warn("Aviso: productRef parece ser um ID numérico:", this.productRef);
+                }
+            }
+            
             this.modalElement.style.display = 'block';
             
             // Inicia a listagem de câmeras disponíveis
@@ -793,7 +816,7 @@
                     // Limpa as opções atuais
                     this.cameraSelects.forEach(select => {
                         if (select) {
-                            select.innerHTML = '<option value="">Selecione a câmera...</option>';
+                            select.innerHTML = '<option value="">Selecione a camera...</option>';
                         }
                     });
                     
@@ -801,7 +824,7 @@
                     videoDevices.forEach((device, index) => {
                         const option = document.createElement('option');
                         option.value = device.deviceId;
-                        option.text = device.label || `Câmera ${index + 1}`;
+                        option.text = device.label || 'Camera ' + (index + 1);
                         
                         this.cameraSelects.forEach(select => {
                             if (select) {
@@ -908,11 +931,13 @@
                             document.getElementById('webcamfoto-cancel').style.display = 'inline-block';
                             document.getElementById('webcamfoto-retake-1').style.display = 'none';
                             document.getElementById('webcamfoto-save-1').style.display = 'none';
+                            document.getElementById('webcamfoto-enhance-1').style.display = 'none';
                         } else {
                             document.getElementById('webcamfoto-capture-2').style.display = 'inline-block';
                             document.getElementById('webcamfoto-cancel').style.display = 'inline-block';
                             document.getElementById('webcamfoto-retake-2').style.display = 'none';
                             document.getElementById('webcamfoto-save-2').style.display = 'none';
+                            document.getElementById('webcamfoto-enhance-2').style.display = 'none';
                         }
                         
                         // Esconde mensagens de erro
@@ -943,52 +968,74 @@
         /**
          * Captura a imagem da webcam
          * @param {number} cameraIndex - Índice da câmera (1 ou 2)
+         * @returns {boolean} - true se a captura foi bem sucedida
          */
-        capture(cameraIndex) {
-            if (!this.video || !this.canvas) return;
+        capture(cameraIndex = 1) {
+            console.log(`WebcamFoto.capture(${cameraIndex})`);
             
-            const context = cameraIndex === 1 ? this.canvas.getContext('2d') : this.canvas2.getContext('2d');
-            
-            // Desenha o frame atual do vídeo no canvas
-            if (cameraIndex === 1) {
-                context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-            } else {
-                context.drawImage(this.video2, 0, 0, this.canvas2.width, this.canvas2.height);
+            // Verifica se a webcam está ativa
+            if (!this.videoStreams[cameraIndex - 1]) {
+                console.error(`Stream de vídeo ${cameraIndex} não disponível`);
+                return false;
             }
             
-            // Salva a imagem capturada
-            if (cameraIndex === 1) {
-                this.capturedImage = this.canvas.toDataURL('image/jpeg');
-            } else {
-                this.capturedImage2 = this.canvas2.toDataURL('image/jpeg');
+            // Referências aos elementos
+            const video = cameraIndex === 1 ? this.video : this.video2;
+            const canvas = cameraIndex === 1 ? this.canvas : this.canvas2;
+            const videoContainer = this.videoContainers[cameraIndex - 1];
+            const canvasContainer = this.canvasContainers[cameraIndex - 1];
+            
+            if (!video || !canvas || !videoContainer || !canvasContainer) {
+                console.error(`Elementos necessários para captura ${cameraIndex} não disponíveis`);
+                return false;
             }
             
-            // Exibe o canvas e esconde o vídeo
+            // Captura a imagem
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Armazena a imagem capturada
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
             if (cameraIndex === 1) {
-                this.videoContainers[0].style.display = 'none';
-                this.canvasContainers[0].style.display = 'block';
+                this.capturedImage = imageData;
             } else {
-                this.videoContainers[1].style.display = 'none';
-                this.canvasContainers[1].style.display = 'block';
+                this.capturedImage2 = imageData;
             }
+            
+            // Oculta o vídeo e mostra o canvas
+            videoContainer.style.display = 'none';
+            canvasContainer.style.display = 'block';
             
             // Atualiza os botões
-            if (cameraIndex === 1) {
-                document.getElementById('webcamfoto-capture-1').style.display = 'none';
-                document.getElementById('webcamfoto-cancel').style.display = 'inline-block';
-                document.getElementById('webcamfoto-retake-1').style.display = 'inline-block';
-                document.getElementById('webcamfoto-save-1').style.display = 'inline-block';
+            const captureBtn = document.getElementById(`webcamfoto-capture${cameraIndex > 1 ? '-' + cameraIndex : ''}`);
+            const retakeBtn = document.getElementById(`webcamfoto-retake${cameraIndex > 1 ? '-' + cameraIndex : ''}`);
+            const saveBtn = document.getElementById(`webcamfoto-save${cameraIndex > 1 ? '-' + cameraIndex : ''}`);
+            const enhanceBtn = document.getElementById(`webcamfoto-enhance${cameraIndex > 1 ? '-' + cameraIndex : ''}`);
+            
+            if (captureBtn) captureBtn.style.display = 'none';
+            if (retakeBtn) retakeBtn.style.display = 'inline-block';
+            if (saveBtn) saveBtn.style.display = 'inline-block';
+            
+            // Mostra o botão de IA se o módulo estiver disponível
+            if (enhanceBtn) {
+                enhanceBtn.style.display = 'inline-block';
+                console.log("Botão de IA exibido após captura");
             } else {
-                document.getElementById('webcamfoto-capture-2').style.display = 'none';
-                document.getElementById('webcamfoto-cancel').style.display = 'inline-block';
-                document.getElementById('webcamfoto-retake-2').style.display = 'inline-block';
-                document.getElementById('webcamfoto-save-2').style.display = 'inline-block';
+                console.log("Botão de IA não encontrado após captura");
+                
+                // Tenta encontrar o botão de IA pelo ID principal
+                const mainEnhanceBtn = document.getElementById('webcamfoto-enhance');
+                if (mainEnhanceBtn) {
+                    mainEnhanceBtn.style.display = 'inline-block';
+                    console.log("Botão principal de IA exibido após captura");
+                }
             }
             
-            // Para a webcam para economizar recursos
-            this.stopWebcam(cameraIndex);
+            return true;
         }
-
+        
         /**
          * Limpa a captura
          * @param {number} cameraIndex - Índice da câmera (1 ou 2)
@@ -1015,7 +1062,7 @@
          */
         save(cameraIndex) {
             if (!this.capturedImage && !this.capturedImage2 || !this.productId) {
-                console.error('Nenhuma imagem capturada ou ID do produto não definido');
+                console.error('Imagens não capturadas ou ID do produto não definido');
                 return;
             }
             
@@ -1087,7 +1134,11 @@
             
             // Envia a imagem para o servidor usando FormData
             const formData = new FormData();
-            formData.append('product_id', this.productId);
+            if (this.productRef) {
+                formData.append('product_ref', this.productRef);
+            } else if (this.productId) {
+                formData.append('product_id', this.productId);
+            }
             if (cameraIndex === 1) {
                 formData.append('image_data', this.capturedImage);
             } else {
@@ -1148,7 +1199,8 @@
                             saveBtn.disabled = false;
                             saveBtn.textContent = 'Salvar Foto';
                             saveBtn.classList.remove('loading');
-                            saveBtn.style.display = 'none';
+                            // Mantemos o botão visível após o salvamento
+                            // saveBtn.style.display = 'none';
                         }
                     } else {
                         const saveBtn = document.getElementById('webcamfoto-save-2');
@@ -1156,7 +1208,8 @@
                             saveBtn.disabled = false;
                             saveBtn.textContent = 'Salvar Foto';
                             saveBtn.classList.remove('loading');
-                            saveBtn.style.display = 'none';
+                            // Mantemos o botão visível após o salvamento
+                            // saveBtn.style.display = 'none';
                         }
                     }
                     
@@ -1318,6 +1371,22 @@
         }
 
         /**
+         * Obtém a referência do produto da página
+         * @returns {string|null} Referência do produto
+         */
+        getProductRefFromPage() {
+            // Procura por um elemento com a classe 'ref' que contém a referência do produto
+            const refElement = document.querySelector('.ref');
+            if (refElement) {
+                const ref = refElement.textContent.trim();
+                console.log('Referência encontrada:', ref);
+                return ref;
+            }
+            console.log('Referência não encontrada');
+            return null;
+        }
+
+        /**
          * Captura ambas as câmeras
          */
         captureBoth() {
@@ -1400,9 +1469,13 @@
             const saveImage = (imageData, suffix) => {
                 // Envia a imagem para o servidor usando FormData
                 const formData = new FormData();
-                formData.append('product_id', this.productId);
+                if (this.productRef) {
+                    formData.append('product_ref', this.productRef);
+                } else if (this.productId) {
+                    formData.append('product_id', this.productId);
+                }
                 formData.append('image_data', imageData);
-                formData.append('suffix', suffix);  // Adiciona um sufixo para identificar qual câmera
+                formData.append('image_suffix', suffix);  // Usa image_suffix conforme PHP
                 
                 // Determina o URL do script de salvamento
                 const saveUrl = this.getSavePhotoUrl();
@@ -1477,10 +1550,16 @@
             };
             
             // Salva ambas as imagens
-            Promise.all([
-                saveImage(this.capturedImage, '_cam1'),
-                saveImage(this.capturedImage2, '_cam2')
-            ])
+            saveImage(this.capturedImage, '_cam1')
+            .then(() => saveImage(this.capturedImage2, '_cam2'))
+            .then(() => {
+                // Reativa o botão
+                if (saveBothBtn) {
+                    saveBothBtn.disabled = false;
+                    saveBothBtn.textContent = 'Salvar Ambas as Fotos';
+                    saveBothBtn.classList.remove('loading');
+                }
+            })
             .catch(error => {
                 showError('Erro ao salvar as fotos: ' + error.message);
             });
@@ -1515,10 +1594,12 @@
                 const captureBtn = document.getElementById('webcamfoto-capture-1');
                 const retakeBtn = document.getElementById('webcamfoto-retake-1');
                 const saveBtn = document.getElementById('webcamfoto-save-1');
+                const enhanceBtn = document.getElementById('webcamfoto-enhance-1');
                 
                 if (captureBtn) captureBtn.style.display = 'inline-block';
                 if (retakeBtn) retakeBtn.style.display = 'none';
                 if (saveBtn) saveBtn.style.display = 'none';
+                if (enhanceBtn) enhanceBtn.style.display = 'none';
             } else {
                 this.videoContainers[1].style.display = 'block';
                 this.canvasContainers[1].style.display = 'none';
@@ -1530,10 +1611,12 @@
                 const captureBtn = document.getElementById('webcamfoto-capture-2');
                 const retakeBtn = document.getElementById('webcamfoto-retake-2');
                 const saveBtn = document.getElementById('webcamfoto-save-2');
+                const enhanceBtn = document.getElementById('webcamfoto-enhance-2');
                 
                 if (captureBtn) captureBtn.style.display = 'inline-block';
                 if (retakeBtn) retakeBtn.style.display = 'none';
                 if (saveBtn) saveBtn.style.display = 'none';
+                if (enhanceBtn) enhanceBtn.style.display = 'none';
             }
             
             // Limpa a área do canvas
@@ -1543,7 +1626,152 @@
             const deviceId = this.selectedCameras[cameraIndex - 1] ? this.selectedCameras[cameraIndex - 1].deviceId : null;
             this.startWebcam(cameraIndex, deviceId);
         }
-    }
+        
+        /**
+         * Aprimora uma imagem capturada usando IA
+         * @param {number} cameraIndex - Índice da câmera (1 ou 2)
+         */
+        enhanceImage(cameraIndex) {
+            console.log(`WebcamFoto.enhanceImage(${cameraIndex})`);
+            
+            // Verifica se o módulo de IA está disponível
+            if (!window.ImageEnhancer || typeof window.ImageEnhancer.enhanceImage !== 'function') {
+                console.error('Módulo de IA não disponível');
+                this.showError('Módulo de IA não disponível. Verifique a configuração.');
+                return;
+            }
+            
+            // Verifica se o ImageEnhancer tem configurações válidas
+            if (!window.ImageEnhancer.hasSettings()) {
+                console.error('Configurações de IA não disponíveis');
+                this.showError('Configurações de IA não disponíveis. Verifique a configuração no painel de administração.');
+                return;
+            }
+            
+            // Verifica se temos uma imagem capturada
+            const canvas = cameraIndex === 1 ? this.canvas : this.canvas2;
+            const enhancedImage = cameraIndex === 1 ? this.enhancedImage : this.enhancedImage2;
+            
+            if (!canvas) {
+                console.error(`Canvas ${cameraIndex} não disponível`);
+                return;
+            }
+            
+            // Se já temos uma imagem aprimorada, exibe-a
+            if (enhancedImage) {
+                console.log(`Imagem ${cameraIndex} já aprimorada, exibindo`);
+                const canvasContext = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => {
+                    canvasContext.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = enhancedImage;
+                return;
+            }
+            
+            // Exibe mensagem de progresso
+            this.showProgress('Otimizando imagem com IA...');
+            
+            // Obtém a imagem do canvas
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Chama o módulo de IA para aprimorar a imagem
+            window.ImageEnhancer.enhanceImage(imageData)
+                .then(enhancedImageData => {
+                    console.log(`Imagem ${cameraIndex} aprimorada com sucesso`);
+                    
+                    // Armazena a imagem aprimorada
+                    if (cameraIndex === 1) {
+                        this.enhancedImage = enhancedImageData;
+                    } else {
+                        this.enhancedImage2 = enhancedImageData;
+                    }
+                    
+                    // Exibe a imagem aprimorada
+                    const canvasContext = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = () => {
+                        canvasContext.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Esconde a mensagem de progresso
+                        this.hideProgress();
+                        
+                        // Exibe métricas de performance se disponíveis
+                        if (window.ImageEnhancer.getMetrics) {
+                            const metrics = window.ImageEnhancer.getMetrics();
+                            this.showSuccess(`Otimização concluída em ${metrics.duration}ms usando modelo ${metrics.model}`);
+                        } else {
+                            this.showSuccess('Otimização concluída com sucesso');
+                        }
+                    };
+                    img.src = enhancedImageData;
+                })
+                .catch(error => {
+                    console.error(`Erro ao aprimorar imagem ${cameraIndex}:`, error);
+                    this.hideProgress();
+                    this.showError(`Erro ao otimizar imagem: ${error.message}`);
+                });
+        }
+
+        /**
+         * Mostra uma barra de progresso genérica
+         * @param {string} message - Mensagem inicial (opcional)
+         */
+        showProgress(message = 'Carregando...') {
+            console.log('WebcamFoto.showProgress()', message);
+            
+            // Usa o módulo ProgressBar se disponível
+            if (window.ProgressBar && typeof window.ProgressBar.show === 'function') {
+                window.ProgressBar.show('webcamfoto-modal', message);
+                return;
+            }
+            
+            // Implementação alternativa se o ProgressBar não estiver disponível
+            const modal = document.getElementById('webcamfoto-modal');
+            if (!modal) return;
+            
+            // Verifica se já existe um elemento de progresso
+            let progressEl = document.getElementById('webcamfoto-progress');
+            if (!progressEl) {
+                // Cria o elemento de progresso
+                progressEl = document.createElement('div');
+                progressEl.id = 'webcamfoto-progress';
+                progressEl.className = 'webcamfoto-progress';
+                progressEl.innerHTML = `
+                    <div class="webcamfoto-progress-overlay"></div>
+                    <div class="webcamfoto-progress-content">
+                        <div class="webcamfoto-progress-spinner"></div>
+                        <div class="webcamfoto-progress-message">${message}</div>
+                    </div>
+                `;
+                modal.appendChild(progressEl);
+            } else {
+                // Atualiza a mensagem
+                const messageEl = progressEl.querySelector('.webcamfoto-progress-message');
+                if (messageEl) messageEl.textContent = message;
+                progressEl.style.display = 'flex';
+            }
+        }
+        
+        /**
+         * Esconde a barra de progresso
+         */
+        hideProgress() {
+            console.log('WebcamFoto.hideProgress()');
+            
+            // Usa o módulo ProgressBar se disponível
+            if (window.ProgressBar && typeof window.ProgressBar.hide === 'function') {
+                window.ProgressBar.hide('webcamfoto-modal');
+                return;
+            }
+            
+            // Implementação alternativa se o ProgressBar não estiver disponível
+            const progressEl = document.getElementById('webcamfoto-progress');
+            if (progressEl) {
+                progressEl.style.display = 'none';
+            }
+        }
+    } // Fechando a classe WebcamFoto
 
     // Disponibiliza a classe globalmente
     window.WebcamFoto = new WebcamFoto();
@@ -1566,4 +1794,132 @@
         }
     });
 
+    /**
+     * Abre o modal de captura
+     */
+    window.WebcamFoto.openModal = function() {
+        console.log('WebcamFoto.openModal()');
+        
+        // Verifica se o modal existe
+        this.modalElement = document.getElementById('webcamfoto-modal');
+        if (!this.modalElement) {
+            console.error('Modal não encontrado, criando...');
+            this.createModal();
+            this.modalElement = document.getElementById('webcamfoto-modal');
+        }
+        
+        // Exibe o modal
+        if (this.modalElement) {
+            this.modalElement.style.display = 'block';
+        } else {
+            console.error('Modal não encontrado após tentativa de criação');
+            return;
+        }
+        
+        // Inicializa a webcam
+        this.startCamera();
+        
+        // Anexa eventos aos botões
+        this.attachEvents();
+        
+        // Inicializa o módulo de IA
+        this.initializeAI();
+    };
+
+    /**
+     * Inicializa o módulo de IA
+     */
+    window.WebcamFoto.initializeAI = function() {
+        console.log('WebcamFoto.initializeAI()');
+        
+        // Verifica se o módulo de IA está disponível
+        if (window.ImageEnhancer && typeof window.ImageEnhancer.init === 'function') {
+            window.ImageEnhancer.init().then(success => {
+                console.log('ImageEnhancer inicializado:', success);
+                this.enhancementActive = success && window.ImageEnhancer.hasSettings();
+                
+                // Configura o botão de IA
+                const enhanceBtn = document.getElementById('webcamfoto-enhance');
+                if (enhanceBtn) {
+                    if (this.enhancementActive) {
+                        enhanceBtn.addEventListener('click', () => {
+                            this.enhanceImage(1);
+                        });
+                        console.log('Botão de IA configurado com sucesso');
+                    } else {
+                        enhanceBtn.style.display = 'none';
+                        console.log('Módulo de IA não está ativo, botão ocultado');
+                    }
+                } else {
+                    console.error('Botão de IA não encontrado no DOM');
+                }
+            }).catch(error => {
+                console.error('Erro ao inicializar ImageEnhancer:', error);
+                this.enhancementActive = false;
+            });
+        } else {
+            console.log('ImageEnhancer não disponível');
+            this.enhancementActive = false;
+            
+            // Oculta o botão de IA
+            const enhanceBtn = document.getElementById('webcamfoto-enhance');
+            if (enhanceBtn) {
+                enhanceBtn.style.display = 'none';
+            }
+        }
+    };
+
+    /**
+     * Adiciona os eventos aos botões
+     */
+    window.WebcamFoto.attachEvents = function() {
+        console.log('WebcamFoto.attachEvents()');
+        
+        // Botão de fechar o modal
+        const closeBtn = document.querySelector('.webcamfoto-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeModal();
+            });
+        }
+        
+        // Botão de capturar foto
+        const captureBtn = document.getElementById('webcamfoto-capture');
+        if (captureBtn) {
+            captureBtn.addEventListener('click', () => {
+                this.capture(1);
+            });
+        }
+        
+        // Botão de capturar novamente
+        const retakeBtn = document.getElementById('webcamfoto-retake');
+        if (retakeBtn) {
+            retakeBtn.addEventListener('click', () => {
+                this.retake(1);
+            });
+        }
+        
+        // Botão de salvar foto
+        const saveBtn = document.getElementById('webcamfoto-save');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveImage(this.capturedImage, '');
+            });
+        }
+        
+        // Botão de otimizar com IA
+        const enhanceBtn = document.getElementById('webcamfoto-enhance');
+        if (enhanceBtn) {
+            enhanceBtn.addEventListener('click', () => {
+                this.enhanceImage(1);
+            });
+        }
+        
+        // Fecha o modal quando clica fora do conteúdo
+        window.addEventListener('click', (event) => {
+            if (event.target === this.modalElement) {
+                this.closeModal();
+            }
+        });
+    };
 })();

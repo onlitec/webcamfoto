@@ -48,3 +48,31 @@ WebcamfotoSave = Salvar foto
 WebcamfotoCancel = Cancelar
 WebcamfotoSaved = Foto salva com sucesso
 WebcamfotoError = Erro ao salvar a foto
+
+#
+# Configurações de IA
+#
+WebcamfotoAISettings = Configurações de IA
+WEBCAMFOTO_AI_MODEL = Modelo de IA
+WEBCAMFOTO_AI_MODEL_DESC = Selecione o modelo de IA para otimização de imagens
+WEBCAMFOTO_AI_API_KEY = Chave API
+WEBCAMFOTO_AI_API_KEY_DESC = Chave de API para o serviço de IA selecionado
+WEBCAMFOTO_AI_SCALE = Escala de ampliação
+WEBCAMFOTO_AI_SCALE_DESC = Fator de escala para aumentar a resolução da imagem (1-4)
+WEBCAMFOTO_AI_QUALITY = Qualidade da otimização
+WEBCAMFOTO_AI_QUALITY_DESC = Qualidade da imagem otimizada (1-100)
+WEBCAMFOTO_AI_PROMPT = Instrução para IA
+WEBCAMFOTO_AI_PROMPT_DESC = Instrução personalizada para guiar a IA na otimização da imagem
+
+# Métricas de performance
+PerformanceMetrics = Métricas de Performance
+TotalConfigurations = Total de configurações
+AverageConfigTime = Tempo médio de configuração
+seconds = segundos
+
+# Interface de IA
+OptimizeWithAI = Otimizar com IA
+EnhancingImage = Otimizando imagem...
+AIEnhancementComplete = Otimização com IA concluída
+AIEnhancementFailed = Falha na otimização com IA
+ProcessingImage = Processando imagem...

@@ -64,14 +64,20 @@ try {
     
     addDebug("Método POST verificado");
     
-    // Tenta obter o ID do produto e os dados da imagem
-    $product_id = 0;
+    // Tenta obter a referência do produto e os dados da imagem
+    $productRef = '';
+    $productId = 0;
     $image_data = '';
     
     // Primeiro tenta via FormData
     if (isset($_POST['product_id'])) {
-        $product_id = intval($_POST['product_id']);
-        addDebug("ID do produto obtido via POST: " . $product_id);
+        $productId = intval(GETPOST('product_id', 'int'));
+        addDebug("ID do produto obtido via POST: " . $productId);
+    }
+    
+    if (isset($_POST['product_ref'])) {
+        $productRef = GETPOST('product_ref', 'alpha');
+        addDebug("Referência do produto obtida via POST: " . $productRef);
     }
     
     if (isset($_POST['image_data'])) {
@@ -80,15 +86,19 @@ try {
     }
     
     // Se não encontrou, tenta como payload JSON
-    if (empty($product_id) || empty($image_data)) {
+    if (empty($productRef) && empty($productId) || empty($image_data)) {
         $request_body = file_get_contents('php://input');
         if (!empty($request_body)) {
             addDebug("Tentando processar corpo da requisição como JSON");
             $json_data = json_decode($request_body, true);
             if ($json_data !== null) {
                 if (isset($json_data['productId'])) {
-                    $product_id = intval($json_data['productId']);
-                    addDebug("ID do produto obtido via JSON: " . $product_id);
+                    $productId = intval($json_data['productId']);
+                    addDebug("ID do produto obtido via JSON: " . $productId);
+                }
+                if (isset($json_data['productRef'])) {
+                    $productRef = $json_data['productRef'];
+                    addDebug("Referência do produto obtida via JSON: " . $productRef);
                 }
                 if (isset($json_data['imageData'])) {
                     $image_data = $json_data['imageData'];
@@ -103,8 +113,8 @@ try {
     }
     
     // Validações básicas
-    if (empty($product_id)) {
-        throw new Exception('ID do produto não fornecido');
+    if (empty($productRef) && empty($productId)) {
+        throw new Exception('Referência ou ID do produto não fornecido');
     }
     
     if (empty($image_data)) {
@@ -113,9 +123,14 @@ try {
     
     // Verifica se o produto existe
     $product = new Product($db);
-    $result = $product->fetch($product_id);
+    if (!empty($productRef)) {
+        $result = $product->fetch(0, $productRef);
+    } elseif (!empty($productId)) {
+        $result = $product->fetch($productId);
+    }
     if ($result <= 0) {
-        throw new Exception('Produto não encontrado (ID: ' . $product_id . ')');
+        // Ajusta a mensagem de erro
+        throw new Exception('Produto não encontrado (Ref: ' . $productRef . ' ou ID: ' . $productId . ')');
     }
     
     addDebug("Produto encontrado: " . $product->ref);
@@ -142,7 +157,10 @@ try {
     
     // Verifica se há um sufixo específico (usado para diferenciar múltiplas câmeras)
     $suffix = '';
-    if (isset($_POST['suffix']) && !empty($_POST['suffix'])) {
+    if (isset($_POST['image_suffix']) && !empty($_POST['image_suffix'])) {
+        $suffix = $_POST['image_suffix'];
+    } else if (isset($_POST['suffix']) && !empty($_POST['suffix'])) {
+        // Mantém compatibilidade com versões anteriores
         $suffix = $_POST['suffix'];
     }
     

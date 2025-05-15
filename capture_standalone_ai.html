@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Captura de Fotos - Versão Independente</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .page-title {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .webcam-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .webcam-column {
+            width: 49%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: white;
+        }
+        .webcam-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .webcam-video-container, .webcam-canvas-container {
+            height: 350px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .webcam-video, .webcam-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .camera-select {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 6px;
+        }
+        .webcam-controls {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        .button-row {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        .success-message {
+            background-color: #00AB55;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: bold;
+        }
+        .error-message {
+            background-color: #E63757;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: bold;
+        }
+        .btn {
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+        }
+        .btn-blue {
+            background-color: #2C7BE5;
+            color: white;
+        }
+        .btn-blue:hover {
+            background-color: #1A56A0;
+        }
+        .btn-red {
+            background-color: #E63757;
+            color: white;
+        }
+        .btn-red:hover {
+            background-color: #C11F3B;
+        }
+        .btn-yellow {
+            background-color: #F6C23E;
+            color: white;
+        }
+        .btn-yellow:hover {
+            background-color: #D4A012;
+        }
+        .btn-green {
+            background-color: #00AB55;
+            color: white;
+        }
+        .btn-green:hover {
+            background-color: #007B3D;
+        }
+        #product-id-container {
+            margin-bottom: 20px;
+        }
+        #product-id-container input {
+            padding: 8px;
+            width: 100px;
+        }
+        
+        /* Estilos para controles de IA */
+        .btn-purple {
+            background-color: #9c27b0;
+            color: white;
+        }
+        .btn-purple:hover {
+            background-color: #7b1fa2;
+        }
+        .image-adjustments {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .slider-control {
+            margin-bottom: 8px;
+        }
+        .slider-control label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .slider-control input {
+            width: 100%;
+        }
+        .checkbox-control {
+            margin-top: 10px;
+        }
+        .ai-config-panel {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #9c27b0;
+            width: 0%;
+            transition: width 0.3s ease-in-out;
+        }
+    </style>
+    <!-- Script de aprimoramento de imagem com IA -->
+    <script src="./js/ai_enhance.js" defer></script>
+</head>
+<body>
+    <div class="page-container">
+        <h1 class="page-title">Captura de Fotos - Versão Independente</h1>
+        
+        <div class="success-message" id="success-message"></div>
+        <div class="error-message" id="error-message"></div>
+        
+        <div id="product-id-container">
+            <label for="product-id">ID do Produto: </label>
+            <input type="number" id="product-id" placeholder="ID">
+            <button class="btn btn-blue" id="load-product">Carregar Produto</button>
+        </div>
+        
+        <div class="webcam-container">
+            <div class="webcam-column">
+                <div class="webcam-title">Câmera 1</div>
+                <select class="camera-select" id="camera-select-1">
+                    <option value="">Carregando câmeras...</option>
+                </select>
+                <div class="webcam-video-container" id="webcam-video-container-1">
+                    <video class="webcam-video" id="webcam-video-1" autoplay playsinline></video>
+                </div>
+                <div class="webcam-canvas-container" id="webcam-canvas-container-1" style="display: none;">
+                    <canvas class="webcam-canvas" id="webcam-canvas-1"></canvas>
+                </div>
+                <div class="webcam-controls">
+                    <button class="btn btn-blue" id="capture-1">Capturar</button>
+                    <button class="btn btn-yellow" id="retake-1" style="display: none;">Nova Foto</button>
+                    <button class="btn btn-purple" id="enhance-1" style="display: none;">Melhorar com IA</button>
+                    <button class="btn btn-green" id="save-1" style="display: none;">Salvar</button>
+                </div>
+                
+                <!-- Painel de ajustes de imagem para câmera 1 -->
+                <div class="image-adjustments" id="adjustments-1" style="display: none;">
+                    <h4>Ajustes da Imagem</h4>
+                    <div class="progress-bar" id="progress-bar-1" style="display: none;">
+                        <div class="progress-fill" id="progress-fill-1"></div>
+                    </div>
+                    <div class="slider-control">
+                        <label>Brilho: <span id="brightness-value-1">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="brightness-slider-1">
+                    </div>
+                    <div class="slider-control">
+                        <label>Contraste: <span id="contrast-value-1">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="contrast-slider-1">
+                    </div>
+                    <div class="slider-control">
+                        <label>Saturação: <span id="saturation-value-1">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="saturation-slider-1">
+                    </div>
+                    <div class="checkbox-control">
+                        <input type="checkbox" id="remove-bg-1">
+                        <label for="remove-bg-1">Remover Fundo</label>
+                    </div>
+                    <div class="button-row" style="margin-top: 10px;">
+                        <button class="btn btn-blue" id="apply-adjustments-1">Aplicar Ajustes</button>
+                        <button class="btn btn-yellow" id="restore-original-1">Restaurar Original</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="webcam-column">
+                <div class="webcam-title">Câmera 2</div>
+                <select class="camera-select" id="camera-select-2">
+                    <option value="">Carregando câmeras...</option>
+                </select>
+                <div class="webcam-video-container" id="webcam-video-container-2">
+                    <video class="webcam-video" id="webcam-video-2" autoplay playsinline></video>
+                </div>
+                <div class="webcam-canvas-container" id="webcam-canvas-container-2" style="display: none;">
+                    <canvas class="webcam-canvas" id="webcam-canvas-2"></canvas>
+                </div>
+                <div class="webcam-controls">
+                    <button class="btn btn-blue" id="capture-2">Capturar</button>
+                    <button class="btn btn-yellow" id="retake-2" style="display: none;">Nova Foto</button>
+                    <button class="btn btn-purple" id="enhance-2" style="display: none;">Melhorar com IA</button>
+                    <button class="btn btn-green" id="save-2" style="display: none;">Salvar</button>
+                </div>
+                
+                <!-- Painel de ajustes de imagem para câmera 2 -->
+                <div class="image-adjustments" id="adjustments-2" style="display: none;">
+                    <h4>Ajustes da Imagem</h4>
+                    <div class="progress-bar" id="progress-bar-2" style="display: none;">
+                        <div class="progress-fill" id="progress-fill-2"></div>
+                    </div>
+                    <div class="slider-control">
+                        <label>Brilho: <span id="brightness-value-2">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="brightness-slider-2">
+                    </div>
+                    <div class="slider-control">
+                        <label>Contraste: <span id="contrast-value-2">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="contrast-slider-2">
+                    </div>
+                    <div class="slider-control">
+                        <label>Saturação: <span id="saturation-value-2">0</span></label>
+                        <input type="range" min="-100" max="100" value="0" id="saturation-slider-2">
+                    </div>
+                    <div class="checkbox-control">
+                        <input type="checkbox" id="remove-bg-2">
+                        <label for="remove-bg-2">Remover Fundo</label>
+                    </div>
+                    <div class="button-row" style="margin-top: 10px;">
+                        <button class="btn btn-blue" id="apply-adjustments-2">Aplicar Ajustes</button>
+                        <button class="btn btn-yellow" id="restore-original-2">Restaurar Original</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-row">
+            <button class="btn btn-blue" id="capture-both">Capturar Ambas</button>
+            <button class="btn btn-purple" id="enhance-both" style="display: none;">Melhorar Ambas</button>
+            <button class="btn btn-green" id="save-both" style="display: none;">Salvar Ambas</button>
+            <button class="btn btn-red" id="close-window">Fechar</button>
+            <button class="btn btn-blue" id="show-ai-config">Configurar IA</button>
+        </div>
+        
+        <!-- Painel de configuração da IA -->
+        <div class="ai-config-panel" id="ai-config-panel" style="display: none;">
+            <h3>Configuração da IA para Aprimoramento de Imagens</h3>
+            <div class="form-group">
+                <label for="ai-api-key">Chave da API</label>
+                <input type="password" id="ai-api-key" placeholder="Insira sua chave de API">
+            </div>
+            <div class="form-group">
+                <label for="ai-model">Modelo de IA</label>
+                <select id="ai-model">
+                    <option value="stability-ai/sdxl">Stability AI - SDXL (recomendado)</option>
+                    <option value="replicate/background-removal">Replicate - Remoção de Fundo</option>
+                    <option value="openai/dall-e-3">OpenAI - DALL-E 3</option>
+                </select>
+            </div>
+            <p><small>Observe: É necessário uma chave de API válida para usar os recursos de aprimoramento de imagem com IA.</small></p>
+            <div class="button-row">
+                <button class="btn btn-blue" id="save-ai-config">Salvar Configurações</button>
+                <button class="btn btn-red" id="close-ai-config">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class WebcamStandalone {
+            constructor() {
+                this.productId = null;
+                this.videoElements = [
+                    document.getElementById('webcam-video-1'),
+                    document.getElementById('webcam-video-2')
+                ];
+                this.canvasElements = [
+                    document.getElementById('webcam-canvas-1'),
+                    document.getElementById('webcam-canvas-2')
+                ];
+                this.videoContainers = [
+                    document.getElementById('webcam-video-container-1'),
+                    document.getElementById('webcam-video-container-2')
+                ];
+                this.canvasContainers = [
+                    document.getElementById('webcam-canvas-container-1'),
+                    document.getElementById('webcam-canvas-container-2')
+                ];
+                this.cameraSelects = [
+                    document.getElementById('camera-select-1'),
+                    document.getElementById('camera-select-2')
+                ];
+                this.captureButtons = [
+                    document.getElementById('capture-1'),
+                    document.getElementById('capture-2')
+                ];
+                this.retakeButtons = [
+                    document.getElementById('retake-1'),
+                    document.getElementById('retake-2')
+                ];
+                this.saveButtons = [
+                    document.getElementById('save-1'),
+                    document.getElementById('save-2')
+                ];
+                this.captureBothButton = document.getElementById('capture-both');
+                this.saveBothButton = document.getElementById('save-both');
+                this.closeButton = document.getElementById('close-window');
+                this.successMessage = document.getElementById('success-message');
+                this.errorMessage = document.getElementById('error-message');
+                this.productIdInput = document.getElementById('product-id');
+                this.loadProductButton = document.getElementById('load-product');
+                
+                this.videoStreams = [null, null];
+                this.selectedCameras = [null, null];
+                this.cameraOptions = [[], []];
+                this.capturedImages = [null, null];
+                
+                this.init();
+            }
+            
+            init() {
+                this.attachEvents();
+                this.enumerateDevices();
+                
+                // Tenta obter o ID do produto da URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const productId = urlParams.get('id');
+                if (productId) {
+                    this.productIdInput.value = productId;
+                    this.loadProduct();
+                }
+            }
+            
+            attachEvents() {
+                // Botão para carregar produto
+                this.loadProductButton.addEventListener('click', () => this.loadProduct());
+                
+                // Botões de captura
+                this.captureButtons[0].addEventListener('click', () => this.capture(0));
+                this.captureButtons[1].addEventListener('click', () => this.capture(1));
+                
+                // Botões para tirar nova foto
+                this.retakeButtons[0].addEventListener('click', () => this.retake(0));
+                this.retakeButtons[1].addEventListener('click', () => this.retake(1));
+                
+                // Botões para salvar foto
+                this.saveButtons[0].addEventListener('click', () => this.save(0));
+                this.saveButtons[1].addEventListener('click', () => this.save(1));
+                
+                // Botão para capturar ambas
+                this.captureBothButton.addEventListener('click', () => this.captureBoth());
+                
+                // Botão para salvar ambas
+                this.saveBothButton.addEventListener('click', () => this.saveBoth());
+                
+                // Botão para fechar janela
+                this.closeButton.addEventListener('click', () => this.closeWindow());
+                
+                // Selects de câmeras
+                this.cameraSelects.forEach((select, index) => {
+                    select.addEventListener('change', (e) => {
+                        const deviceId = e.target.value;
+                        if (deviceId) {
+                            this.startWebcam(index, deviceId);
+                        }
+                    });
+                });
+            }
+            
+            loadProduct() {
+                const productId = this.productIdInput.value;
+                if (!productId) {
+                    this.showError('Por favor, informe o ID do produto.');
+                    return;
+                }
+                
+                this.productId = productId;
+                this.showSuccess('Produto #' + productId + ' carregado com sucesso.');
+            }
+            
+            enumerateDevices() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    this.showError('Navegador não suporta a listagem de dispositivos de mídia');
+                    return;
+                }
+                
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        // Filtra apenas as câmeras de vídeo
+                        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                        
+                        // Se não houver câmeras, mostra erro
+                        if (videoDevices.length === 0) {
+                            this.showError('Nenhuma webcam encontrada');
+                            return;
+                        }
+                        
+                        // Limpa as opções atuais
+                        this.cameraSelects.forEach(select => {
+                            select.innerHTML = '<option value="">Selecione a câmera...</option>';
+                        });
+                        
+                        // Adiciona as câmeras encontradas
+                        videoDevices.forEach((device, index) => {
+                            const option = document.createElement('option');
+                            option.value = device.deviceId;
+                            option.text = device.label || `Câmera ${index + 1}`;
+                            
+                            this.cameraSelects.forEach(select => {
+                                select.appendChild(option.cloneNode(true));
+                            });
+                            
+                            // Armazena as opções de câmera
+                            this.cameraOptions[0].push(device);
+                            this.cameraOptions[1].push(device);
+                        });
+                        
+                        // Seleciona a primeira câmera por padrão para a primeira coluna
+                        if (videoDevices.length > 0) {
+                            this.cameraSelects[0].value = videoDevices[0].deviceId;
+                            this.selectedCameras[0] = videoDevices[0];
+                            
+                            // Inicia a webcam com a câmera selecionada
+                            this.startWebcam(0, videoDevices[0].deviceId);
+                            
+                            // Se houver mais de uma câmera, seleciona a segunda para a segunda coluna
+                            if (videoDevices.length > 1) {
+                                this.cameraSelects[1].value = videoDevices[1].deviceId;
+                                this.selectedCameras[1] = videoDevices[1];
+                                
+                                // Inicia a webcam com a câmera selecionada
+                                this.startWebcam(1, videoDevices[1].deviceId);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        this.showError('Erro ao listar dispositivos: ' + error.message);
+                    });
+            }
+            
+            startWebcam(cameraIndex, deviceId = null) {
+                // Verifica se o navegador suporta a API de mídia
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    // Configurações para captura de vídeo
+                    const constraints = {
+                        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+                        audio: false
+                    };
+                    
+                    // Para qualquer stream anterior
+                    this.stopWebcam(cameraIndex);
+                    
+                    // Solicita acesso à webcam
+                    navigator.mediaDevices.getUserMedia(constraints)
+                        .then((stream) => {
+                            this.videoStreams[cameraIndex] = stream;
+                            this.videoElements[cameraIndex].srcObject = stream;
+                            
+                            // Ajusta canvas para o tamanho do vídeo
+                            this.videoElements[cameraIndex].addEventListener('loadedmetadata', () => {
+                                this.canvasElements[cameraIndex].width = this.videoElements[cameraIndex].videoWidth;
+                                this.canvasElements[cameraIndex].height = this.videoElements[cameraIndex].videoHeight;
+                            });
+                            
+                            // Exibe o container de vídeo e esconde o de canvas
+                            this.videoContainers[cameraIndex].style.display = 'flex';
+                            this.canvasContainers[cameraIndex].style.display = 'none';
+                            
+                            // Mostra/esconde os botões apropriados
+                            this.captureButtons[cameraIndex].style.display = 'inline-block';
+                            this.retakeButtons[cameraIndex].style.display = 'none';
+                            this.saveButtons[cameraIndex].style.display = 'none';
+                            
+                            // Esconde mensagens
+                            this.successMessage.style.display = 'none';
+                            this.errorMessage.style.display = 'none';
+                        })
+                        .catch((error) => {
+                            this.showError('Erro ao acessar a webcam: ' + error.message);
+                        });
+                } else {
+                    this.showError('Este navegador não suporta acesso à webcam');
+                }
+            }
+            
+            stopWebcam(cameraIndex) {
+                if (this.videoStreams[cameraIndex]) {
+                    this.videoStreams[cameraIndex].getTracks().forEach(track => track.stop());
+                    this.videoStreams[cameraIndex] = null;
+                }
+            }
+            
+            capture(cameraIndex) {
+                const video = this.videoElements[cameraIndex];
+                const canvas = this.canvasElements[cameraIndex];
+                
+                if (!video || !canvas) return;
+                
+                const context = canvas.getContext('2d');
+                
+                // Desenha o frame atual do vídeo no canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Salva a imagem capturada
+                this.capturedImages[cameraIndex] = canvas.toDataURL('image/jpeg');
+                
+                // Exibe o canvas e esconde o vídeo
+                this.videoContainers[cameraIndex].style.display = 'none';
+                this.canvasContainers[cameraIndex].style.display = 'flex';
+                
+                // Mostra/esconde os botões apropriados
+                this.captureButtons[cameraIndex].style.display = 'none';
+                this.retakeButtons[cameraIndex].style.display = 'inline-block';
+                this.saveButtons[cameraIndex].style.display = 'inline-block';
+                
+                // Para a webcam para economizar recursos
+                this.stopWebcam(cameraIndex);
+            }
+            
+            captureBoth() {
+                this.capture(0);
+                this.capture(1);
+                
+                // Mostra o botão para salvar ambas e esconde o de capturar ambas
+                this.captureBothButton.style.display = 'none';
+                this.saveBothButton.style.display = 'inline-block';
+            }
+            
+            clearCapture(cameraIndex) {
+                this.capturedImages[cameraIndex] = null;
+                
+                const context = this.canvasElements[cameraIndex].getContext('2d');
+                context.clearRect(0, 0, this.canvasElements[cameraIndex].width, this.canvasElements[cameraIndex].height);
+            }
+            
+            retake(cameraIndex) {
+                // Esconde mensagens
+                this.successMessage.style.display = 'none';
+                this.errorMessage.style.display = 'none';
+                
+                // Volta para a visualização da webcam
+                this.videoContainers[cameraIndex].style.display = 'flex';
+                this.canvasContainers[cameraIndex].style.display = 'none';
+                
+                // Redefine a imagem capturada
+                this.capturedImages[cameraIndex] = null;
+                
+                // Mostra/esconde os botões apropriados
+                this.captureButtons[cameraIndex].style.display = 'inline-block';
+                this.retakeButtons[cameraIndex].style.display = 'none';
+                this.saveButtons[cameraIndex].style.display = 'none';
+                
+                // Se ambas as capturas foram limpas, mostra o botão de capturar ambas
+                if (!this.capturedImages[0] && !this.capturedImages[1]) {
+                    this.captureBothButton.style.display = 'inline-block';
+                    this.saveBothButton.style.display = 'none';
+                }
+                
+                // Limpa a área do canvas
+                this.clearCapture(cameraIndex);
+                
+                // Reinicia a webcam
+                const deviceId = this.selectedCameras[cameraIndex] ? this.selectedCameras[cameraIndex].deviceId : null;
+                this.startWebcam(cameraIndex, deviceId);
+            }
+            
+            getSavePhotoUrl() {
+                // Obtém o caminho base da URL atual
+                return '/dolibarr/htdocs/custom/webcamfoto/ajax/save_photo.php';
+            }
+            
+            save(cameraIndex) {
+                if (!this.productId) {
+                    this.showError('Por favor, informe o ID do produto primeiro.');
+                    return;
+                }
+                
+                if (!this.capturedImages[cameraIndex]) {
+                    this.showError('Nenhuma imagem capturada.');
+                    return;
+                }
+                
+                // Desabilita o botão durante o salvamento
+                const saveBtn = this.saveButtons[cameraIndex];
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Salvando...';
+                
+                // Envia a imagem para o servidor usando FormData
+                const formData = new FormData();
+                formData.append('product_id', this.productId);
+                formData.append('image_data', this.capturedImages[cameraIndex]);
+                formData.append('suffix', `_cam${cameraIndex + 1}`);
+                
+                // Determina o URL do script de salvamento
+                const saveUrl = this.getSavePhotoUrl();
+                
+                // Realiza a requisição para salvar a foto
+                fetch(saveUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    // Verifica se a resposta é válida
+                    if (!response.ok) {
+                        throw new Error('Erro na resposta do servidor: ' + response.status);
+                    }
+                    
+                    return response.text().then(text => {
+                        // Tenta fazer o parse como JSON
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            // Tenta extrair qualquer JSON que possa estar na resposta
+                            try {
+                                const match = text.match(/{.*}/s);
+                                if (match) {
+                                    return JSON.parse(match[0]);
+                                }
+                            } catch (err) {
+                                // Ignora erros adicionais de parsing
+                            }
+                            
+                            throw new Error('Resposta não é JSON válido: ' + 
+                                           (text.length > 100 ? text.substring(0, 100) + '...' : text));
+                        }
+                    });
+                })
+                .then(data => {
+                    if (data.success) {
+                        this.showSuccess(`Foto ${cameraIndex + 1} salva com sucesso!`);
+                        
+                        // Desativa o botão de salvar
+                        saveBtn.style.display = 'none';
+                        
+                        return true;
+                    } else {
+                        throw new Error(data.error || 'Erro desconhecido ao salvar foto');
+                    }
+                })
+                .catch(error => {
+                    this.showError('Erro ao salvar foto: ' + error.message);
+                    
+                    // Reativa o botão
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Salvar';
+                });
+            }
+            
+            saveBoth() {
+                if (!this.productId) {
+                    this.showError('Por favor, informe o ID do produto primeiro.');
+                    return;
+                }
+                
+                if (!this.capturedImages[0] && !this.capturedImages[1]) {
+                    this.showError('Nenhuma imagem capturada.');
+                    return;
+                }
+                
+                // Desabilita o botão durante o salvamento
+                this.saveBothButton.disabled = true;
+                this.saveBothButton.textContent = 'Salvando...';
+                
+                let savedCount = 0;
+                let errorOccurred = false;
+                
+                // Função para salvar uma imagem
+                const saveImage = (imageData, suffix) => {
+                    if (!imageData) return Promise.resolve();
+                    
+                    const formData = new FormData();
+                    formData.append('product_id', this.productId);
+                    formData.append('image_data', imageData);
+                    formData.append('suffix', suffix);
+                    
+                    // Determina o URL do script de salvamento
+                    const saveUrl = this.getSavePhotoUrl();
+                    
+                    // Realiza a requisição para salvar a foto
+                    return fetch(saveUrl, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erro na resposta do servidor: ' + response.status);
+                        }
+                        
+                        return response.text().then(text => {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                try {
+                                    const match = text.match(/{.*}/s);
+                                    if (match) {
+                                        return JSON.parse(match[0]);
+                                    }
+                                } catch (err) {}
+                                
+                                throw new Error('Resposta não é JSON válido');
+                            }
+                        });
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Incrementa o contador de fotos salvas
+                            savedCount++;
+                            
+                            // Se ambas as fotos foram salvas, mostra a mensagem final
+                            if (savedCount === 2) {
+                                this.showSuccess('Ambas as fotos foram salvas com sucesso!');
+                            }
+                            return true;
+                        } else {
+                            throw new Error(data.error || 'Erro desconhecido ao salvar foto');
+                        }
+                    });
+                };
+                
+                // Salva ambas as imagens
+                Promise.all([
+                    saveImage(this.capturedImages[0], '_cam1'),
+                    saveImage(this.capturedImages[1], '_cam2')
+                ])
+                .then(() => {
+                    // Desativa o botão de salvar ambas
+                    this.saveBothButton.style.display = 'none';
+                    
+                    // Ativa o botão para nova captura
+                    this.captureBothButton.style.display = 'inline-block';
+                })
+                .catch(error => {
+                    this.showError('Erro ao salvar as fotos: ' + error.message);
+                    
+                    // Reativa o botão
+                    this.saveBothButton.disabled = false;
+                    this.saveBothButton.textContent = 'Salvar Ambas';
+                });
+            }
+            
+            showSuccess(message) {
+                this.successMessage.textContent = message;
+                this.successMessage.style.display = 'block';
+                this.errorMessage.style.display = 'none';
+            }
+            
+            showError(message) {
+
+// Limpa a área do canvas
+this.clearCapture(cameraIndex);
+
+// Reinicia a webcam
+const deviceId = this.selectedCameras[cameraIndex] ? this.selectedCameras[cameraIndex].deviceId : null;
+this.startWebcam(cameraIndex, deviceId);
+}
+
+getSavePhotoUrl() {
+    // Obtém o caminho base da URL atual
+    return '/dolibarr/htdocs/custom/webcamfoto/ajax/save_photo.php';
+}
+
+save(cameraIndex) {
+    if (!this.productId) {
+        this.showError('Por favor, informe o ID do produto primeiro.');
+        return;
+    }
+
+    if (!this.capturedImages[cameraIndex]) {
+        this.showError('Nenhuma imagem capturada.');
+        return;
+    }
+
+    // Desabilita o botão durante o salvamento
+    const saveBtn = this.saveButtons[cameraIndex];
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+
+    // Envia a imagem para o servidor usando FormData
+    const formData = new FormData();
+    formData.append('product_id', this.productId);
+    formData.append('image_data', this.capturedImages[cameraIndex]);
+    formData.append('suffix', `_cam${cameraIndex + 1}`);
+
+    // Determina o URL do script de salvamento
+    const saveUrl = this.getSavePhotoUrl();
+
+    // Realiza a requisição para salvar a foto
+    fetch(saveUrl, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Verifica se a resposta é válida
+        if (!response.ok) {
+            throw new Error('Erro na resposta do servidor: ' + response.status);
+        }
+
+        return response.text().then(text => {
+            // Tenta fazer o parse como JSON
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                // Tenta extrair qualquer JSON que possa estar na resposta
+                try {
+                    const match = text.match(/{.*}/s);
+                    if (match) {
+                        return JSON.parse(match[0]);
+                    }
+                } catch (err) {
+                    // Ignora erros adicionais de parsing
+                }
+
+                throw new Error('Resposta não é JSON válido: ' + 
+                               (text.length > 100 ? text.substring(0, 100) + '...' : text));
+            }
+        });
+    </script>
+</body>
+</html>
