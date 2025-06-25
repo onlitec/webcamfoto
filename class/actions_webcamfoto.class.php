@@ -42,7 +42,7 @@ class ActionsWebcamfoto extends CommonHookActions
 
         // Verifica se estamos na página do produto
         if (is_object($object) && get_class($object) == 'Product') {
-            if ($user->rights->product->creer) {
+            if (!empty($user->rights->product) && $user->rights->product->creer) {
                 // Carrega as traduções
                 $langs->load('webcamfoto@webcamfoto');
 
