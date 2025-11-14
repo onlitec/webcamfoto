@@ -72,7 +72,7 @@ class modWebcamfoto extends DolibarrModules
         $this->descriptionlong = "Módulo para capturar fotos dos produtos usando a webcam conectada ao computador do usuário";
 
         // Mostrado no login
-        $this->version = '1.0';
+        $this->version = '2.0.0';
 
         // Key used in llx_const table to save module status enabled/disabled
         $this->const_name = 'MAIN_MODULE_' . strtoupper($this->name);
@@ -107,7 +107,8 @@ class modWebcamfoto extends DolibarrModules
             // Set this to relative path of js file if module must load a js on all pages
             'js' => array(
                 // '/custom/webcamfoto/js/webcam.js', // Removido para evitar conflito com webcam_page.js
-                '/custom/webcamfoto/js/inject_button.js'
+                '/custom/webcamfoto/js/inject_button.js',
+                '/custom/webcamfoto/js/webcamfoto.js'
             ),
             // Set here all hooks context managed by module. You can also set hook context 'all'
             'hooks' => array(
@@ -140,7 +141,7 @@ class modWebcamfoto extends DolibarrModules
         $this->warnings_activation = array(); // Warning to show when we activate module. array('always'='text') or array('FR'='textfr','ES'='textes'...)
         $this->warnings_activation_ext = array(); // Warning to show when we activate an external module. array('always'='text') or array('FR'='textfr','ES'='textes'...)
         //$this->automatic_activation = array('FR'=>'WebcamfotoWasAutomaticallyActivatedBecauseOfYourCountryChoice');
-        //$this->always_enabled = true;								// If true, can't be disabled
+        //$this->always_enabled = true;                                // If true, can't be disabled
 
         // Constants
         // List of particular constants to add when module is enabled (key, 'chaine', value, desc, visible, 'current' or 'allentities', deleteonunactive)
