@@ -1,0 +1,22 @@
+name: Publish Release v2.0.0
+on:
+  workflow_dispatch:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0.0
+          name: Webcamfoto v2.0.0
+          body: |
+            Release v2.0.0
+            - Captura via webcam
+            - Interface com modal interativo
+            - Salvamento no produto
+            - Compatibilidade Dolibarr 12+ e PHP 7.1+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
